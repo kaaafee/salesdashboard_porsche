@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Porsche Sales Performance Dashboard</title>
+  <!-- Chart.js para renderização gráfica em Canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #0a0a0a;
+      --card-bg: #141414;
+      --card-border: #262626;
+      --porsche-red: #d5001c;
+      --porsche-red-hover: #b00017;
+      --text-main: #f5f5f7;
+      --text-muted: #8e8e93;
+      --accent-gray: #1c1c1e;
+      --accent-gold: #c5a059;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header Porsche Style */
+    header {
+      background-color: #000;
+      border-bottom: 1px solid var(--card-border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .porsche-logo {
+      font-weight: 700;
+      letter-spacing: 6px;
+      font-size: 20px;
+      color: var(--text-main);
+      text-transform: uppercase;
+      border-left: 3px solid var(--porsche-red);
+      padding-left: 12px;
+    }
+
+    .dash-title {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* Tabs Navigation */
+    .nav-tabs {
+      display: flex;
+      background-color: #000;
+      border-bottom: 1px solid var(--card-border);
+      padding: 0 32px;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--text-main);
+      border-bottom-color: var(--porsche-red);
+      font-weight: 600;
+    }
+
+    /* Main Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      padding: 24px 32px;
+      flex: 1;
+    }
+
+    /* Filters Sidebar */
+    .filter-sidebar {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      height: fit-content;
+    }
+
+    .filter-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-reset {
+      background: none;
+      border: none;
+      color: var(--porsche-red);
+      font-size: 11px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-control {
+      background-color: var(--accent-gray);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+    }
+
+    .filter-control:focus {
+      border-color: var(--porsche-red);
+    }
+
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-val {
+      font-size: 11px;
+      color: var(--text-main);
+      text-align: right;
+    }
+
+    /* Dashboard Views */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* KPI Cards Row */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background-color: var(--porsche-red);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: #34c759;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-sub.negative {
+      color: #ff3b30;
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .chart-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chart-card.full-width {
+      grid-column: span 2;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 280px;
+    }
+
+    /* Data Table */
+    .table-wrapper {
+      overflow-x: auto;
+      max-height: 400px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #000;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #1f1f1f;
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .page-content {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .page-content.active {
+      display: flex;
+    }
+
+    /* Custom Responsive Adjustments */
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+      .chart-card.full-width {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-container">
+      <div class="porsche-logo">PORSCHE</div>
+      <div class="dash-title">Sales Intelligence Dashboard</div>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('overview')">Página 1 – Visão Geral</button>
+    <button class="tab-btn" onclick="switchTab('product')">Página 2 – Análise por Produto</button>
+    <button class="tab-btn" onclick="switchTab('geography')">Página 3 – Análise Geográfica</button>
+    <button class="tab-btn" onclick="switchTab('status')">Página 4 – Status & Operacional</button>
+  </nav>
+
+  <div class="main-container">
+    
+    <!-- Sidebar de Filtros Interativos -->
+    <aside class="filter-sidebar">
+      <div class="filter-title">
+        <span>Filtros</span>
+        <button class="btn-reset" onclick="resetFilters()">Limpar</button>
+      </div>
+
+      <div class="filter-group">
+        <label>Período (Início - Fim)</label>
+        <input type="date" id="filter-date-start" class="filter-control" onchange="applyFilters()">
+        <input type="date" id="filter-date-end" class="filter-control" style="margin-top:4px;" onchange="applyFilters()">
+      </div>
+
+      <div class="filter-group">
+        <label>Modelo</label>
+        <select id="filter-model" class="filter-control" onchange="applyFilters()">
+          <option value="ALL">Todos os Modelos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Ano do Modelo (MY)</label>
+        <select id="filter-year" class="filter-control" onchange="applyFilters()">
+          <option value="ALL">Todos os Anos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Estado (UF)</label>
+        <select id="filter-state" class="filter-control" onchange="onStateChange()">
+          <option value="ALL">Todos os Estados</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Cidade</label>
+        <select id="filter-city" class="filter-control" onchange="applyFilters()">
+          <option value="ALL">Todas as Cidades</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Status de Entrega</label>
+        <select id="filter-status" class="filter-control" onchange="applyFilters()">
+          <option value="ALL">Todos os Status</option>
+        </select>
+      </div>
+
+      <div class="filter-group slider-container">
+        <label>Preço Máximo</label>
+        <div class="slider-val" id="price-val">USD $300,000</div>
+        <input type="range" id="filter-price" min="50000" max="300000" step="5000" value="300000" class="filter-control" oninput="updateSliderLabels()" onchange="applyFilters()">
+      </div>
+
+      <div class="filter-group slider-container">
+        <label>Quilometragem Máxima</label>
+        <div class="slider-val" id="mileage-val">60,000 mi</div>
+        <input type="range" id="filter-mileage" min="0" max="60000" step="1000" value="60000" class="filter-control" oninput="updateSliderLabels()" onchange="applyFilters()">
+      </div>
+    </aside>
+
+    <!-- Áreas das Páginas -->
+    <main class="content-area">
+
+      <!-- KPIs Globais do Topo -->
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Total de Vendas</span>
+          <span class="kpi-value" id="kpi-sales">0</span>
+          <span class="kpi-sub" id="kpi-sales-sub">▲ +12.4% MoM</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Receita Total</span>
+          <span class="kpi-value" id="kpi-revenue">$0</span>
+          <span class="kpi-sub" id="kpi-rev-sub">▲ +8.1% MoM</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Ticket Médio</span>
+          <span class="kpi-value" id="kpi-avg-price">$0</span>
+          <span class="kpi-sub" id="kpi-ticket-sub">Mix Estável</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Quilometragem Média</span>
+          <span class="kpi-value" id="kpi-avg-mileage">0 mi</span>
+          <span class="kpi-sub" id="kpi-km-sub">Seminovos / Certificados</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Taxa de Conclusão</span>
+          <span class="kpi-value" id="kpi-conversion">0%</span>
+          <span class="kpi-sub" id="kpi-conv-sub">Pedidos Entregues</span>
+        </div>
+      </section>
+
+      <!-- PÁGINA 1: VISÃO GERAL -->
+      <section id="page-overview" class="page-content active">
+        <div class="charts-grid">
+          <div class="chart-card full-width">
+            <div class="chart-header">
+              <span class="chart-title">Evolução Mensal de Vendas & Receita</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartSalesTrend"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Top 10 Modelos Mais Vendidos</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartTopModels"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Distribuição por Estado</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartStateDist"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PÁGINA 2: ANÁLISE POR PRODUTO -->
+      <section id="page-product" class="page-content">
+        <div class="charts-grid">
+          <div class="chart-card full-width">
+            <div class="chart-header">
+              <span class="chart-title">Preço de Venda vs. Quilometragem (Depreciação)</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartScatterPriceMileage"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Preço Médio por Ano do Modelo (MY)</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartAvgPriceYear"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Mix de Vendas por Faixa de Preço</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartPriceRangeMix"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PÁGINA 3: ANÁLISE GEOGRÁFICA -->
+      <section id="page-geography" class="page-content">
+        <div class="charts-grid">
+          <div class="chart-card full-width">
+            <div class="chart-header">
+              <span class="chart-title">Receita por Região</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartRegionRevenue"></canvas>
+            </div>
+          </div>
+          <div class="chart-card full-width">
+            <div class="chart-header">
+              <span class="chart-title">Detalhamento Geográfico (Estado x Cidade)</span>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Estado</th>
+                    <th>Cidade</th>
+                    <th>Qtd Vendas</th>
+                    <th>Receita Total</th>
+                    <th>Ticket Médio</th>
+                  </tr>
+                </thead>
+                <tbody id="geo-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PÁGINA 4: STATUS & OPERACIONAL -->
+      <section id="page-status" class="page-content">
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Status dos Pedidos</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartStatusFunnel"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">Meios de Pagamento</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartPaymentMethods"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Configurações globais de estilo para Chart.js no padrão Porsche
+    Chart.defaults.color = '#8e8e93';
+    Chart.defaults.borderColor = '#262626';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    // Dataset Sanitizado Embutido
+    const rawData = [
+      {"sale_id": 6, "date": "2024-02-28", "customer_name": "Michael Adams", "model": "718 Cayman", "year": 2022, "price": 79500.0, "mileage": 9800, "payment": "Credit Card", "city": "Boston", "state": "MA", "status": "Delivered", "region": "Northeast"},
+      {"sale_id": 7, "date": "2024-03-14", "customer_name": "SOPHIA Miller", "model": "911 Turbo S", "year": 2024, "price": 235000.0, "mileage": 1200, "payment": "Wire Transfer", "city": "Seattle", "state": "WA", "status": "Delivered", "region": "West"},
+      {"sale_id": 8, "date": "2024-04-18", "customer_name": "Daniel-Jones", "model": "Cayenne Coupe", "year": 2023, "price": 112750.0, "mileage": 6400, "payment": "Financing", "city": "Austin", "state": "TX", "status": "In Transit", "region": "South"},
+      {"sale_id": 9, "date": "2024-04-30", "customer_name": "Olivia Brown", "model": "Macan S", "year": 2021, "price": 68900.0, "mileage": 28, "payment": "Cash", "city": "Denver", "state": "CO", "status": "Pending", "region": "West"},
+      {"sale_id": 10, "date": "2024-05-22", "customer_name": "Ethan Wilson", "model": "Taycan 4S", "year": 2024, "price": 121000.0, "mileage": 0, "payment": "Bank Transfer", "city": "Los Angeles", "state": "CA", "status": "Delivered", "region": "West"},
+      {"sale_id": 11, "date": "2024-06-01", "customer_name": "AVA TAYLOR", "model": "Panamera 4", "year": 2020, "price": 84500.0, "mileage": 24500, "payment": "Financing", "city": "Miami", "state": "FL", "status": "Cancelled", "region": "South"},
+      {"sale_id": 12, "date": "2024-06-19", "customer_name": "Matthew Anderson", "model": "911 Carrera S", "year": 2023, "price": 142000.0, "mileage": 4100, "payment": "Wire Transfer", "city": "New York", "state": "NY", "status": "Delivered", "region": "Northeast"},
+      {"sale_id": 13, "date": "2024-07-15", "customer_name": "Isabella Thomas", "model": "Cayenne E-Hybrid", "year": 2022, "price": 99800.0, "mileage": 15200, "payment": "Credit Card", "city": "Chicago", "state": "IL", "status": "Pending Approval", "region": "Midwest"},
+      {"sale_id": 14, "date": "2024-08-03", "customer_name": "Lucas Jackson", "model": "718 Boxster", "year": 2021, "price": 72400.0, "mileage": 18900, "payment": "Cash", "city": "Phoenix", "state": "AZ", "status": "Delivered", "region": "West"},
+      {"sale_id": 15, "date": "2024-08-27", "customer_name": "Mia White", "model": "Macan GTS", "year": 2024, "price": 91500.0, "mileage": 50, "payment": "Financing", "city": "Las Vegas", "state": "NV", "status": "Shipped", "region": "West"},
+      {"sale_id": 16, "date": "2024-09-12", "customer_name": "Benjamin Harris", "model": "Taycan Turbo", "year": 2023, "price": 165000.0, "mileage": 8300, "payment": "Wire Transfer", "city": "Atlanta", "state": "GA", "status": "Delivered", "region": "South"},
+      {"sale_id": 17, "date": "2024-10-28", "customer_name": "Charlotte Martin", "model": "911 GT3", "year": 2024, "price": 228000.0, "mileage": 850, "payment": "Bank Transfer", "city": "Portland", "state": "OR", "status": "In Transit", "region": "West"},
+      {"sale_id": 18, "date": "2024-11-05", "customer_name": "William Thompson", "model": "Panamera Turbo S", "year": 2022, "price": 182000.0, "mileage": 11400, "payment": "Financing", "city": "Dallas", "state": "TX", "status": "Delivered", "region": "South"},
+      {"sale_id": 19, "date": "2024-11-20", "customer_name": "Amelia Garcia", "model": "Cayenne Turbo GT", "year": 2024, "price": 198500.0, "mileage": 2100, "payment": "Wire Transfer", "city": "Houston", "state": "TX", "status": "Awaiting Delivery", "region": "South"},
+      {"sale_id": 20, "date": "2024-12-08", "customer_name": "James Martinez", "model": "911 Carrera Cabriolet", "year": 2023, "price": 136000.0, "mileage": 5600, "payment": "Credit Card", "city": "Charlotte", "state": "NC", "status": "Delivered", "region": "South"},
+      {"sale_id": 21, "date": "2024-12-23", "customer_name": "Harper Robinson", "model": "Macan", "year": 2022, "price": 62500.0, "mileage": 14200, "payment": "Financing", "city": "Nashville", "state": "TN", "status": "Delivered", "region": "South"},
+      {"sale_id": 22, "date": "2025-01-28", "customer_name": "Alexander Clark", "model": "718 Spyder RS", "year": 2024, "price": 178000.0, "mileage": 320, "payment": "Cash", "city": "Minneapolis", "state": "MN", "status": "Pending", "region": "Midwest"},
+      {"sale_id": 23, "date": "2025-01-28", "customer_name": "Evelyn Rodriguez", "model": "Taycan Cross Turismo", "year": 2023, "price": 118000.0, "mileage": 9100, "payment": "Bank Transfer", "city": "Philadelphia", "state": "PA", "status": "Delivered", "region": "Northeast"},
+      {"sale_id": 24, "date": "2025-02-28", "customer_name": "Henry Lewis", "model": "Cayenne S", "year": 2024, "price": 108000.0, "mileage": 1800, "payment": "Financing", "city": "Salt Lake City", "state": "UT", "status": "Awaiting Pickup", "region": "West"},
+      {"sale_id": 25, "date": "2025-03-05", "customer_name": "Ella Lee", "model": "911 Targa 4S", "year": 2023, "price": 158000.0, "mileage": 4700, "payment": "Wire Transfer", "city": "Detroit", "state": "MI", "status": "Delivered", "region": "Midwest"},
+      {"sale_id": 26, "date": "2025-03-18", "customer_name": "Sebastian Walker", "model": "Panamera", "year": 2021, "price": 89000.0, "mileage": 21000, "payment": "Credit Card", "city": "Columbus", "state": "OH", "status": "Delivered", "region": "Midwest"},
+      {"sale_id": 27, "date": "2025-04-02", "customer_name": "Abigail Hall", "model": "Macan Electric", "year": 2024, "price": 88000.0, "mileage": 10, "payment": "Financing", "city": "Indianapolis", "state": "IN", "status": "In Transit", "region": "Midwest"},
+      {"sale_id": 28, "date": "2025-04-30", "customer_name": "Jack Allen", "model": "911 Dakar", "year": 2024, "price": 242000.0, "mileage": 500, "payment": "Cash", "city": "Milwaukee", "state": "WI", "status": "Pending Review", "region": "Midwest"},
+      {"sale_id": 29, "date": "2025-05-11", "customer_name": "Emily Young", "model": "Taycan GTS", "year": 2023, "price": 139000.0, "mileage": 6800, "payment": "Bank Transfer", "city": "St. Louis", "state": "MO", "status": "Delivered", "region": "Midwest"},
+      {"sale_id": 30, "date": "2025-05-29", "customer_name": "Owen Hernandez", "model": "Cayenne", "year": 2022, "price": 82000.0, "mileage": 16500, "payment": "Financing", "city": "Omaha", "state": "NE", "status": "Delivered", "region": "Midwest"},
+      {"sale_id": 31, "date": "2025-06-30", "customer_name": "Aria King", "model": "718 Cayman GT4 RS", "year": 2024, "price": 195000.0, "mileage": 900, "payment": "Wire Transfer", "city": "Albuquerque", "state": "NM", "status": "Shipped", "region": "West"},
+      {"sale_id": 32, "date": "2025-07-04", "customer_name": "Samuel Wright", "model": "911 Carrera GTS", "year": 2023, "price": 162000.0, "mileage": 3900, "payment": "Credit Card", "city": "Richmond", "state": "VA", "status": "Delivered", "region": "South"},
+      {"sale_id": 33, "date": "2025-07-21", "customer_name": "Chloe Lopez", "model": "Panamera 4 E-Hybrid", "year": 2022, "price": 105000.0, "mileage": 13800, "payment": "Financing", "city": "Oklahoma City", "state": "OK", "status": "Cancelled", "region": "South"},
+      {"sale_id": 34, "date": "2025-08-08", "customer_name": "Ryan Scott", "model": "Macan T", "year": 2023, "price": 69500.0, "mileage": 7200, "payment": "Cash", "city": "Wichita", "state": "KS", "status": "Delivered", "region": "South"},
+      {"sale_id": 35, "date": "2025-08-25", "customer_name": "Layla Green", "model": "Taycan Turbo S", "year": 2024, "price": 209000.0, "mileage": 1100, "payment": "Bank Transfer", "city": "New Orleans", "state": "LA", "status": "Pending", "region": "South"},
+      {"sale_id": 36, "date": "2025-09-30", "customer_name": "Nathan Adams", "model": "Cayenne Coupe", "year": 2023, "price": 115000.0, "mileage": 5200, "payment": "Wire Transfer", "city": "Honolulu", "state": "HI", "status": "Delivered", "region": "West"},
+      {"sale_id": 37, "date": "2025-09-29", "customer_name": "Zoe Baker", "model": "911 Carrera", "year": 2021, "price": 112000.0, "mileage": 17900, "payment": "Financing", "city": "Louisville", "state": "KY", "status": "In Transit", "region": "South"},
+      {"sale_id": 38, "date": "2025-10-14", "customer_name": "Leo Gonzalez", "model": "Taycan", "year": 2022, "price": 92000.0, "mileage": 12400, "payment": "Credit Card", "city": "Anchorage", "state": "AK", "status": "Delivered", "region": "West"},
+      {"sale_id": 39, "date": "2025-10-31", "customer_name": "Nora Nelson", "model": "Macan S", "year": 2024, "price": 76000.0, "mileage": 1500, "payment": "Cash", "city": "Boston", "state": "MA", "status": "Delivered", "region": "Northeast"},
+      {"sale_id": 40, "date": "2025-11-12", "customer_name": "Eli Carter", "model": "718 Cayman", "year": 2023, "price": 74500.0, "mileage": 6100, "payment": "Financing", "city": "Seattle", "state": "WA", "status": "Awaiting Delivery", "region": "West"},
+      {"sale_id": 41, "date": "2025-11-28", "customer_name": "Hazel Mitchell", "model": "911 Turbo S", "year": 2024, "price": 245000.0, "mileage": 450, "payment": "Wire Transfer", "city": "Austin", "state": "TX", "status": "Delivered", "region": "South"},
+      {"sale_id": 42, "date": "2025-12-10", "customer_name": "Aaron Perez", "model": "Panamera 4S", "year": 2022, "price": 118000.0, "mileage": 14900, "payment": "Bank Transfer", "city": "Denver", "state": "CO", "status": "Pending", "region": "West"},
+      {"sale_id": 43, "date": "2025-11-18", "customer_name": "Violet Roberts", "model": "Cayenne E-Hybrid", "year": 2024, "price": 106000.0, "mileage": 2300, "payment": "Financing", "city": "Los Angeles", "state": "CA", "status": "Delivered", "region": "West"},
+      {"sale_id": 44, "date": "2025-11-30", "customer_name": "Connor Turner", "model": "911 Turbo", "year": 2023, "price": 198000.0, "mileage": 3800, "payment": "Cash", "city": "Miami", "state": "FL", "status": "Awaiting Pickup", "region": "South"},
+      {"sale_id": 45, "date": "2025-12-28", "customer_name": "Aurora Phillips", "model": "Macan GTS", "year": 2022, "price": 83500.0, "mileage": 16200, "payment": "Credit Card", "city": "New York", "state": "NY", "status": "Delivered", "region": "Northeast"},
+      {"sale_id": 46, "date": "2026-01-15", "customer_name": "Jeremiah Campbell", "model": "Taycan 4S", "year": 2024, "price": 126000.0, "mileage": 800, "payment": "Wire Transfer", "city": "Chicago", "state": "IL", "status": "Delivered", "region": "Midwest"},
+      {"sale_id": 47, "date": "2025-12-28", "customer_name": "Samantha Parker", "model": "718 Boxster GTS", "year": 2023, "price": 94000.0, "mileage": 5100, "payment": "Financing", "city": "Phoenix", "state": "AZ", "status": "Pending Approval", "region": "West"},
+      {"sale_id": 48, "date": "2026-02-18", "customer_name": "Christian Evans", "model": "911 GT3 RS", "year": 2024, "price": 286500.0, "mileage": 120, "payment": "Bank Transfer", "city": "Las Vegas", "state": "NV", "status": "Delivered", "region": "West"},
+      {"sale_id": 49, "date": "2026-02-28", "customer_name": "Stella Edwards", "model": "Panamera Turbo", "year": 2021, "price": 132000.0, "mileage": 22400, "payment": "Cash", "city": "Atlanta", "state": "GA", "status": "Cancelled", "region": "South"},
+      {"sale_id": 50, "date": "2026-03-08", "customer_name": "Landon Collins", "model": "Cayenne Turbo", "year": 2023, "price": 154000.0, "mileage": 4200, "payment": "Financing", "city": "Portland", "state": "OR", "status": "Delivered", "region": "West"}
+    ];
+
+    let filteredData = [...rawData];
+    let chartInstances = {};
+
+    // Inicialização da Aplicação
+    window.addEventListener('DOMContentLoaded', () => {
+      populateFilterOptions();
+      applyFilters();
+    });
+
+    // Alternar entre abas/páginas
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById(`page-${tabId}`).classList.add('active');
+
+      // Re-renderizar gráficos visíveis para ajustar o canvas
+      renderCharts();
+    }
+
+    // Popular os Selects dos Filtros
+    function populateFilterOptions() {
+      const models = [...new Set(rawData.map(d => d.model))].sort();
+      const years = [...new Set(rawData.map(d => d.year))].sort((a,b) => b - a);
+      const states = [...new Set(rawData.map(d => d.state))].sort();
+      const statuses = [...new Set(rawData.map(d => d.status))].sort();
+
+      const selectModel = document.getElementById('filter-model');
+      models.forEach(m => selectModel.add(new Option(m, m)));
+
+      const selectYear = document.getElementById('filter-year');
+      years.forEach(y => selectYear.add(new Option(y, y)));
+
+      const selectState = document.getElementById('filter-state');
+      states.forEach(s => selectState.add(new Option(s, s)));
+
+      const selectStatus = document.getElementById('filter-status');
+      statuses.forEach(s => selectStatus.add(new Option(s, s)));
+
+      populateCities('ALL');
+    }
+
+    // Hierarquia Estado -> Cidade
+    function onStateChange() {
+      const state = document.getElementById('filter-state').value;
+      populateCities(state);
+      applyFilters();
+    }
+
+    function populateCities(selectedState) {
+      const selectCity = document.getElementById('filter-city');
+      selectCity.innerHTML = '<option value="ALL">Todas as Cidades</option>';
+
+      let cities = rawData;
+      if (selectedState !== 'ALL') {
+        cities = cities.filter(d => d.state === selectedState);
+      }
+      const uniqueCities = [...new Set(cities.map(d => d.city))].sort();
+      uniqueCities.forEach(c => selectCity.add(new Option(c, c)));
+    }
+
+    function updateSliderLabels() {
+      const price = document.getElementById('filter-price').value;
+      const mileage = document.getElementById('filter-mileage').value;
+      document.getElementById('price-val').innerText = `USD $${parseInt(price).toLocaleString()}`;
+      document.getElementById('mileage-val').innerText = `${parseInt(mileage).toLocaleString()} mi`;
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-date-start').value = '';
+      document.getElementById('filter-date-end').value = '';
+      document.getElementById('filter-model').value = 'ALL';
+      document.getElementById('filter-year').value = 'ALL';
+      document.getElementById('filter-state').value = 'ALL';
+      populateCities('ALL');
+      document.getElementById('filter-city').value = 'ALL';
+      document.getElementById('filter-status').value = 'ALL';
+      document.getElementById('filter-price').value = 300000;
+      document.getElementById('filter-mileage').value = 60000;
+      updateSliderLabels();
+      applyFilters();
+    }
+
+    // Lógica Principal de Filtragem
+    function applyFilters() {
+      const dStart = document.getElementById('filter-date-start').value;
+      const dEnd = document.getElementById('filter-date-end').value;
+      const model = document.getElementById('filter-model').value;
+      const year = document.getElementById('filter-year').value;
+      const state = document.getElementById('filter-state').value;
+      const city = document.getElementById('filter-city').value;
+      const status = document.getElementById('filter-status').value;
+      const maxPrice = parseFloat(document.getElementById('filter-price').value);
+      const maxMileage = parseFloat(document.getElementById('filter-mileage').value);
+
+      filteredData = rawData.filter(d => {
+        if (dStart && d.date < dStart) return false;
+        if (dEnd && d.date > dEnd) return false;
+        if (model !== 'ALL' && d.model !== model) return false;
+        if (year !== 'ALL' && d.year != year) return false;
+        if (state !== 'ALL' && d.state !== state) return false;
+        if (city !== 'ALL' && d.city !== city) return false;
+        if (status !== 'ALL' && d.status !== status) return false;
+        if (d.price > maxPrice) return false;
+        if (d.mileage > maxMileage) return false;
+        return true;
+      });
+
+      updateKPIs();
+      renderCharts();
+      renderGeoTable();
+    }
+
+    // Atualização dos KPIs
+    function updateKPIs() {
+      const totalSales = filteredData.length;
+      const totalRevenue = filteredData.reduce((acc, d) => acc + d.price, 0);
+      const avgPrice = totalSales > 0 ? totalRevenue / totalSales : 0;
+      const avgMileage = totalSales > 0 ? filteredData.reduce((acc, d) => acc + d.mileage, 0) / totalSales : 0;
+      const deliveredCount = filteredData.filter(d => d.status === 'Delivered').length;
+      const conversionRate = totalSales > 0 ? (deliveredCount / totalSales) * 100 : 0;
+
+      document.getElementById('kpi-sales').innerText = totalSales.toLocaleString();
+      document.getElementById('kpi-revenue').innerText = `$${Math.round(totalRevenue).toLocaleString()}`;
+      document.getElementById('kpi-avg-price').innerText = `$${Math.round(avgPrice).toLocaleString()}`;
+      document.getElementById('kpi-avg-mileage').innerText = `${Math.round(avgMileage).toLocaleString()} mi`;
+      document.getElementById('kpi-conversion').innerText = `${conversionRate.toFixed(1)}%`;
+    }
+
+    // Função de Destruição/Re-criação de Gráficos Canvas
+    function createOrUpdateChart(chartId, config) {
+      if (chartInstances[chartId]) {
+        chartInstances[chartId].destroy();
+      }
+      const ctx = document.getElementById(chartId).getContext('2d');
+      chartInstances[chartId] = new Chart(ctx, config);
+    }
+
+    // Renderização de Todos os Gráficos
+    function renderCharts() {
+      renderSalesTrend();
+      renderTopModels();
+      renderStateDist();
+      renderScatterPriceMileage();
+      renderAvgPriceYear();
+      renderPriceRangeMix();
+      renderRegionRevenue();
+      renderStatusFunnel();
+      renderPaymentMethods();
+    }
+
+    // 1. Tendência de Vendas (Linha e Barra)
+    function renderSalesTrend() {
+      const months = {};
+      filteredData.forEach(d => {
+        const ym = d.date.substring(0, 7);
+        if (!months[ym]) months[ym] = { count: 0, revenue: 0 };
+        months[ym].count += 1;
+        months[ym].revenue += d.price;
+      });
+
+      const sortedYM = Object.keys(months).sort();
+
+      createOrUpdateChart('chartSalesTrend', {
+        type: 'bar',
+        data: {
+          labels: sortedYM,
+          datasets: [
+            {
+              label: 'Receita (USD)',
+              data: sortedYM.map(m => months[m].revenue),
+              backgroundColor: 'rgba(213, 0, 28, 0.5)',
+              borderColor: '#d5001c',
+              borderWidth: 1,
+              yAxisID: 'y1'
+            },
+            {
+              label: 'Qtd Vendas',
+              data: sortedYM.map(m => months[m].count),
+              type: 'line',
+              borderColor: '#f5f5f7',
+              backgroundColor: '#f5f5f7',
+              tension: 0.3,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { position: 'left', grid: { color: '#1f1f1f' }, title: { display: true, text: 'Unidades' } },
+            y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Receita ($)' } }
+          }
+        }
+      });
+    }
+
+    // 2. Top Modelos
+    function renderTopModels() {
+      const models = {};
+      filteredData.forEach(d => {
+        models[d.model] = (models[d.model] || 0) + 1;
+      });
+
+      const sorted = Object.entries(models).sort((a,b) => b[1] - a[1]).slice(0, 8);
+
+      createOrUpdateChart('chartTopModels', {
+        type: 'bar',
+        data: {
+          labels: sorted.map(s => s[0]),
+          datasets: [{
+            label: 'Vendas',
+            data: sorted.map(s => s[1]),
+            backgroundColor: '#d5001c',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 3. Distribuição por Estado
+    function renderStateDist() {
+      const states = {};
+      filteredData.forEach(d => {
+        states[d.state] = (states[d.state] || 0) + 1;
+      });
+
+      const sorted = Object.entries(states).sort((a,b) => b[1] - a[1]).slice(0, 6);
+
+      createOrUpdateChart('chartStateDist', {
+        type: 'doughnut',
+        data: {
+          labels: sorted.map(s => s[0]),
+          datasets: [{
+            data: sorted.map(s => s[1]),
+            backgroundColor: ['#d5001c', '#c5a059', '#3a3a3c', '#636366', '#8e8e93', '#aeaeb2']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+    }
+
+    // 4. Scatter Plot: Preço x Quilometragem
+    function renderScatterPriceMileage() {
+      const points = filteredData.map(d => ({ x: d.mileage, y: d.price, model: d.model }));
+
+      createOrUpdateChart('chartScatterPriceMileage', {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Veículos Vendidos',
+            data: points,
+            backgroundColor: 'rgba(213, 0, 28, 0.7)',
+            borderColor: '#d5001c',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Quilometragem (milhas)' }, grid: { color: '#1f1f1f' } },
+            y: { title: { display: true, text: 'Preço de Venda ($)' }, grid: { color: '#1f1f1f' } }
+          }
+        }
+      });
+    }
+
+    // 5. Preço Médio por Ano
+    function renderAvgPriceYear() {
+      const years = {};
+      filteredData.forEach(d => {
+        if (!years[d.year]) years[d.year] = { sum: 0, count: 0 };
+        years[d.year].sum += d.price;
+        years[d.year].count += 1;
+      });
+
+      const sortedYears = Object.keys(years).sort();
+
+      createOrUpdateChart('chartAvgPriceYear', {
+        type: 'line',
+        data: {
+          labels: sortedYears,
+          datasets: [{
+            label: 'Preço Médio ($)',
+            data: sortedYears.map(y => Math.round(years[y].sum / years[y].count)),
+            borderColor: '#c5a059',
+            backgroundColor: 'rgba(197, 160, 89, 0.1)',
+            fill: true,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 6. Mix por Faixa de Preço
+    function renderPriceRangeMix() {
+      const ranges = { '< $80k': 0, '$80k-$120k': 0, '$120k-$160k': 0, '$160k-$200k': 0, '> $200k': 0 };
+
+      filteredData.forEach(d => {
+        if (d.price < 80000) ranges['< $80k']++;
+        else if (d.price < 120000) ranges['$80k-$120k']++;
+        else if (d.price < 160000) ranges['$120k-$160k']++;
+        else if (d.price < 200000) ranges['$160k-$200k']++;
+        else ranges['> $200k']++;
+      });
+
+      createOrUpdateChart('chartPriceRangeMix', {
+        type: 'bar',
+        data: {
+          labels: Object.keys(ranges),
+          datasets: [{
+            label: 'Quantidade',
+            data: Object.values(ranges),
+            backgroundColor: '#3a3a3c'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 7. Receita por Região
+    function renderRegionRevenue() {
+      const regions = {};
+      filteredData.forEach(d => {
+        regions[d.region] = (regions[d.region] || 0) + d.price;
+      });
+
+      createOrUpdateChart('chartRegionRevenue', {
+        type: 'bar',
+        data: {
+          labels: Object.keys(regions),
+          datasets: [{
+            label: 'Receita Total ($)',
+            data: Object.values(regions),
+            backgroundColor: ['#d5001c', '#c5a059', '#636366', '#8e8e93']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 8. Funil / Status
+    function renderStatusFunnel() {
+      const statuses = {};
+      filteredData.forEach(d => {
+        statuses[d.status] = (statuses[d.status] || 0) + 1;
+      });
+
+      createOrUpdateChart('chartStatusFunnel', {
+        type: 'polarArea',
+        data: {
+          labels: Object.keys(statuses),
+          datasets: [{
+            data: Object.values(statuses),
+            backgroundColor: [
+              'rgba(52, 199, 89, 0.7)',
+              'rgba(255, 149, 0, 0.7)',
+              'rgba(0, 122, 255, 0.7)',
+              'rgba(255, 59, 48, 0.7)',
+              'rgba(175, 82, 222, 0.7)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+    }
+
+    // 9. Meios de Pagamento
+    function renderPaymentMethods() {
+      const payments = {};
+      filteredData.forEach(d => {
+        payments[d.payment] = (payments[d.payment] || 0) + 1;
+      });
+
+      createOrUpdateChart('chartPaymentMethods', {
+        type: 'pie',
+        data: {
+          labels: Object.keys(payments),
+          datasets: [{
+            data: Object.values(payments),
+            backgroundColor: ['#d5001c', '#c5a059', '#3a3a3c', '#8e8e93', '#636366']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+    }
+
+    // Tabela Dinâmica Geográfica
+    function renderGeoTable() {
+      const tbody = document.getElementById('geo-table-body');
+      tbody.innerHTML = '';
+
+      const geoGroup = {};
+      filteredData.forEach(d => {
+        const key = `${d.state}|||${d.city}`;
+        if (!geoGroup[key]) geoGroup[key] = { state: d.state, city: d.city, count: 0, revenue: 0 };
+        geoGroup[key].count += 1;
+        geoGroup[key].revenue += d.price;
+      });
+
+      const sortedGeo = Object.values(geoGroup).sort((a,b) => b.revenue - a.revenue);
+
+      sortedGeo.forEach(g => {
+        const tr = document.createElement('tr');
+        const avgTicket = g.count > 0 ? g.revenue / g.count : 0;
+        tr.innerHTML = `
+          <td><strong>${g.state}</strong></td>
+          <td>${g.city}</td>
+          <td>${g.count}</td>
+          <td>$${Math.round(g.revenue).toLocaleString()}</td>
+          <td>$${Math.round(avgTicket).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
